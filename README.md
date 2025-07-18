@@ -10,8 +10,7 @@ A versatile and customizable autoclicker and auto-key-presser built with Python 
 - **Advanced Key Recording:** The "Set Key" feature can record complex actions, including shifted characters (e.g., `!`, `{`) and modifier keys (e.g., `Shift`, `Ctrl`, `Alt`).
 - **Two Timing Modes:** Configure actions to occur by **Clicks Per Second** (up to 200) or at a specific **Click Interval** (hours, minutes, seconds, milliseconds).
 - **Precise Cursor Control:** Actions can be performed at the current cursor location or locked to a specific, pre-selected screen coordinate.
-- **Configurable Hotkey:** Set a custom global hotkey to start and stop the application's action from anywhere in your operating system.
-- **Modern UI:** A sleek, dark-themed interface with sharp, clean lines and an optional light mode.
+- **Configurable Hotkey:** Set a custom global hotkey to start and stop the application's action.
 
 ---
 ## ## How to Run
