@@ -1,6 +1,6 @@
 # Python AutoClicker
 
-A versatile and customizable autoclicker and auto-key-presser built with Python and CustomTkinter. This application provides a clean, modern interface for automating mouse clicks and keyboard actions.
+A versatile and customizable autoclicker and auto-key-presser built with Python and CustomTkinter. This application provides a clean, modern interface for automating mouse clicks and keyboard actions. Works only with the US QWERTY Layout.
 
 ![AutoClicker Screenshot](AutoClickerScreenshot.png)
 

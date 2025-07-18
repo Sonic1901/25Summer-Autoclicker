@@ -23,11 +23,20 @@ class HotkeyListener(threading.Thread):
 
     def on_press(self, key):
         self.pressed_keys.add(key)
-        # Use sorted lists of strings for reliable comparison of key sets
-        if sorted(list(map(str, self.pressed_keys))) == sorted(list(map(str, self.app.hotkey_action))):
+        
+        # Check for Toggle Hotkey (only triggers if not already active)
+        if self.pressed_keys == self.app.toggle_hotkey_action:
             self.app.toggle_action()
-    
+        
+        # Check for Hold Hotkey
+        elif self.pressed_keys == self.app.hold_hotkey_action:
+            self.app.start_action()
+
     def on_release(self, key):
+        # If the released key is part of the hold hotkey, stop the action
+        if key in self.app.hold_hotkey_action:
+            self.app.stop_action()
+
         try:
             self.pressed_keys.remove(key)
         except KeyError:
@@ -70,7 +79,8 @@ class App(ctk.CTk):
         self.app_state = "Idle"
         self.start_time = time.time()
         self.total_actions = 0
-        self.hotkey_action = {keyboard.Key.f6}
+        self.toggle_hotkey_action = {keyboard.Key.f6}
+        self.hold_hotkey_action = {keyboard.Key.f7}
         self.custom_key_action = [{'type': 'press', 'key': 'e'}, {'type': 'release', 'key': 'e'}]
         self.active_thread = None
         self.active_recorder = None
@@ -78,7 +88,7 @@ class App(ctk.CTk):
 
         # --- Window Setup ---
         self.title("Python AutoClicker")
-        self.geometry("680x610")
+        self.geometry("680x650") # Adjusted height
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         ctk.set_appearance_mode("Dark")
@@ -95,14 +105,12 @@ class App(ctk.CTk):
         # -- Status Bar Frame (Sharp) --
         self.status_bar_frame = ctk.CTkFrame(self, corner_radius=0)
         self.status_bar_frame.grid(row=0, column=0, padx=10, pady=(10,0), sticky="ew")
-        
         self.status_label = ctk.CTkLabel(self.status_bar_frame, text="Status: Idle", font=("Arial", 16, "bold"), text_color="red")
         self.status_label.pack(side="left", padx=10, pady=5)
-        
         self.stats_label = ctk.CTkLabel(self.status_bar_frame, text="Uptime: 00:00:00 | Total Clicks: 0")
         self.stats_label.pack(side="right", padx=10, pady=5)
 
-        # -- Main Frames (Sharp Corners) --
+        # -- Main Content Frames --
         self.action_frame = ctk.CTkFrame(self, corner_radius=0)
         self.type_frame = ctk.CTkFrame(self, corner_radius=0)
         self.cursor_frame = ctk.CTkFrame(self, corner_radius=0)
@@ -117,11 +125,9 @@ class App(ctk.CTk):
         self.action_frame.grid_columnconfigure((0, 1), weight=1)
         ctk.CTkLabel(self.action_frame, text="Click Action", font=("Arial", 14, "bold")).grid(row=0, column=0, columnspan=2, pady=10)
         self.target_var = ctk.StringVar(value="Left")
-        
         ctk.CTkRadioButton(self.action_frame, text="Left Click", variable=self.target_var, value="Left", command=self.on_target_change).grid(row=1, column=0, pady=5)
         ctk.CTkRadioButton(self.action_frame, text="Middle Click", variable=self.target_var, value="Middle", command=self.on_target_change).grid(row=1, column=1, pady=5)
         ctk.CTkRadioButton(self.action_frame, text="Right Click", variable=self.target_var, value="Right", command=self.on_target_change).grid(row=2, column=0, pady=5)
-        
         custom_key_frame = ctk.CTkFrame(self.action_frame, fg_color="transparent")
         custom_key_frame.grid(row=2, column=1, pady=5)
         ctk.CTkRadioButton(custom_key_frame, text="Custom Key", variable=self.target_var, value="Key", command=self.on_target_change).pack(side="left")
@@ -131,14 +137,11 @@ class App(ctk.CTk):
         # -- 2. Click Type Frame --
         self.type_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(self.type_frame, text="Click Type", font=("Arial", 14, "bold")).grid(row=0, column=0, columnspan=2, pady=(10,0))
-        
         self.timing_mode_var = ctk.StringVar(value="CPS")
         timing_radio_frame = ctk.CTkFrame(self.type_frame, fg_color="transparent")
         timing_radio_frame.grid(row=1, column=0, columnspan=2, pady=5)
         ctk.CTkRadioButton(timing_radio_frame, text="Clicks Per Second", variable=self.timing_mode_var, value="CPS", command=self.on_timing_mode_change).pack(side="left", padx=20)
         ctk.CTkRadioButton(timing_radio_frame, text="Click Interval", variable=self.timing_mode_var, value="Interval", command=self.on_timing_mode_change).pack(side="left", padx=20)
-
-        # CPS widgets
         self.cps_frame = ctk.CTkFrame(self.type_frame, fg_color="transparent")
         self.cps_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=10)
         self.cps_frame.grid_columnconfigure(1, weight=1)
@@ -146,12 +149,9 @@ class App(ctk.CTk):
         self.cps_entry = ctk.CTkEntry(self.cps_frame, placeholder_text="e.g., 10")
         self.cps_entry.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
         self.cps_entry.insert(0, "10")
-        
-        # Interval widgets
         self.interval_frame = ctk.CTkFrame(self.type_frame, fg_color="transparent")
         self.interval_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=10)
         self.interval_frame.grid_columnconfigure(0, weight=1)
-        
         interval_entries_frame = ctk.CTkFrame(self.interval_frame, fg_color="transparent")
         interval_entries_frame.grid(row=0, column=0, sticky="ew")
         self.interval_entries = {}
@@ -163,14 +163,10 @@ class App(ctk.CTk):
             entry.grid(row=1, column=i, padx=5, sticky="ew")
             entry.insert(0, "0")
             self.interval_entries[label_text.lower()] = entry
-        
-        # Randomizer (New)
         ctk.CTkLabel(self.type_frame, text="Random Delay (+/- ms):").grid(row=3, column=0, padx=20, pady=5, sticky="w")
         self.random_entry = ctk.CTkEntry(self.type_frame)
         self.random_entry.grid(row=3, column=1, padx=10, pady=5, sticky="ew")
         self.random_entry.insert(0, "0")
-
-        # Stop After (Moved down)
         ctk.CTkLabel(self.type_frame, text="Stop After (clicks):").grid(row=4, column=0, padx=20, pady=10, sticky="w")
         self.stop_at_entry = ctk.CTkEntry(self.type_frame)
         self.stop_at_entry.grid(row=4, column=1, padx=10, pady=10, sticky="ew")
@@ -181,7 +177,6 @@ class App(ctk.CTk):
         ctk.CTkLabel(self.cursor_frame, text="Cursor Position", font=("Arial", 14, "bold")).grid(row=0, column=0, columnspan=2, pady=10)
         self.cursor_var = ctk.StringVar(value="Current")
         ctk.CTkRadioButton(self.cursor_frame, text="At Current Position", variable=self.cursor_var, value="Current").grid(row=1, column=0)
-        
         self.custom_loc_frame = ctk.CTkFrame(self.cursor_frame, fg_color="transparent")
         self.custom_loc_frame.grid(row=1, column=1)
         self.radio_picked = ctk.CTkRadioButton(self.custom_loc_frame, text="At Custom Location", variable=self.cursor_var, value="Picked")
@@ -192,26 +187,35 @@ class App(ctk.CTk):
         self.picked_pos_label.pack()
 
         # -- 4. Controls Frame --
-        self.controls_frame.grid_columnconfigure(0, weight=1)
-        self.hotkey_button = ctk.CTkButton(self.controls_frame, text=f"Start/Stop Hotkey: {format_action_sequence(self.hotkey_action)}", command=self.set_hotkey)
+        self.controls_frame.grid_columnconfigure((0,1), weight=1)
         
-        self.theme_switch = ctk.CTkSwitch(self.controls_frame, text="Light Mode", command=self.toggle_theme)
+        self.toggle_hotkey_button = ctk.CTkButton(self.controls_frame, text=f"Toggle Hotkey: {format_action_sequence(self.toggle_hotkey_action)}", command=self.set_toggle_hotkey)
+        self.toggle_hotkey_button.grid(row=0, column=0, padx=(0,5), pady=5, sticky="ew")
+        
+        self.hold_hotkey_button = ctk.CTkButton(self.controls_frame, text=f"Hold Hotkey: {format_action_sequence(self.hold_hotkey_action)}", command=self.set_hold_hotkey)
+        self.hold_hotkey_button.grid(row=0, column=1, padx=(5,0), pady=5, sticky="ew")
+        
+        bottom_controls_frame = ctk.CTkFrame(self.controls_frame, fg_color="transparent")
+        bottom_controls_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
+        
+        self.theme_switch = ctk.CTkSwitch(bottom_controls_frame, text="Light Mode", command=self.toggle_theme)
+        self.theme_switch.pack(side="left", padx=10, pady=10)
         
         help_text = (
             "--- AutoClicker Help ---\n"
-            "Hotkey: Records a key combination (e.g., Ctrl+Shift+F).\n\n"
+            "Toggle Hotkey: Press once to start, press again to stop.\n"
+            "Hold Hotkey: Action is active only while held down.\n"
+            "Each hotkey can be a key combination (e.g., Ctrl+F).\n\n"
             "Click Action: Choose what to automate.\n"
-            "- Set Key: Records a specific key press or mouse click.\n\n"
+            "- Set Key: Records your next action (e.g., a side mouse button).\n\n"
             "Click Type: Set clicks/sec or a fixed interval.\n"
             "- Random Delay: Adds a random +/- variance to the timing.\n\n"
             "Cursor Position: Choose where mouse clicks happen."
         )
-        self.help_button = ctk.CTkButton(self.controls_frame, text="?", width=28)
+        self.help_button = ctk.CTkButton(bottom_controls_frame, text="?", width=28)
         Tooltip(self.help_button, help_text)
-        
         self.help_button.pack(side="right", padx=10, pady=10)
-        self.theme_switch.pack(side="right", padx=0, pady=10)
-        self.hotkey_button.pack(side="left", fill="x", expand=True, padx=10, pady=10)
+        
 
     def toggle_theme(self):
         mode = "light" if self.theme_switch.get() else "dark"
@@ -223,14 +227,11 @@ class App(ctk.CTk):
 
     def update_stats_display(self):
         uptime_str = format_time(time.time() - self.start_time)
-        
         current_run_actions = 0
         if self.active_thread and self.active_thread.is_alive():
             current_run_actions = self.active_thread.actions_done
-
         display_actions = self.total_actions + current_run_actions
         self.stats_label.configure(text=f"Uptime: {uptime_str} | Total Clicks: {display_actions}")
-        
         self.after(1000, self.update_stats_display)
 
     def on_timing_mode_change(self):
@@ -244,28 +245,36 @@ class App(ctk.CTk):
     def on_target_change(self):
         is_mouse_action = self.target_var.get() in ["Left", "Middle", "Right"]
         state = "normal" if is_mouse_action else "disabled"
-
         def set_state_recursive(widget):
             try:
                 if 'state' in widget.configure():
                     widget.configure(state=state)
             except Exception:
                 pass
-            
             for child in widget.winfo_children():
                 set_state_recursive(child)
-        
         set_state_recursive(self.cursor_frame)
 
-    def set_hotkey(self):
+    def set_toggle_hotkey(self):
         if self.active_recorder: return
-        self.hotkey_button.configure(text="Recording new hotkey...")
-        self.active_recorder = ActionRecorder(callback=self.on_hotkey_recorded, hotkey_mode=True)
+        self.toggle_hotkey_button.configure(text="Recording...")
+        self.active_recorder = ActionRecorder(callback=self.on_toggle_hotkey_recorded, hotkey_mode=True)
         self.active_recorder.start()
 
-    def on_hotkey_recorded(self, key_combination):
-        if key_combination: self.hotkey_action = key_combination
-        self.hotkey_button.configure(text=f"Start/Stop Hotkey: {format_action_sequence(self.hotkey_action)}")
+    def on_toggle_hotkey_recorded(self, key_combination):
+        if key_combination: self.toggle_hotkey_action = key_combination
+        self.toggle_hotkey_button.configure(text=f"Toggle Hotkey: {format_action_sequence(self.toggle_hotkey_action)}")
+        self.active_recorder = None
+
+    def set_hold_hotkey(self):
+        if self.active_recorder: return
+        self.hold_hotkey_button.configure(text="Recording...")
+        self.active_recorder = ActionRecorder(callback=self.on_hold_hotkey_recorded, hotkey_mode=True)
+        self.active_recorder.start()
+
+    def on_hold_hotkey_recorded(self, key_combination):
+        if key_combination: self.hold_hotkey_action = key_combination
+        self.hold_hotkey_button.configure(text=f"Hold Hotkey: {format_action_sequence(self.hold_hotkey_action)}")
         self.active_recorder = None
 
     def set_custom_key(self):
@@ -287,12 +296,10 @@ class App(ctk.CTk):
 
     def start_action(self):
         if self.app_state != "Idle": return
-        
         self.update_status("Active", "green")
         try:
             stop_count = int(self.stop_at_entry.get())
             random_ms = int(self.random_entry.get())
-            
             if self.timing_mode_var.get() == "CPS":
                 cps = int(self.cps_entry.get())
                 delay = 1.0 / (cps if cps > 0 else 1)
@@ -302,7 +309,6 @@ class App(ctk.CTk):
                 s = int(self.interval_entries['secs'].get())
                 ms = int(self.interval_entries['ms'].get())
                 delay = (h * 3600) + (m * 60) + s + (ms / 1000)
-            
             target_selection = self.target_var.get()
             action_sequence = []
             if target_selection == "Left":
@@ -313,12 +319,9 @@ class App(ctk.CTk):
                 action_sequence = [{'type': 'click', 'button': mouse.Button.right}]
             else:
                 action_sequence = self.custom_key_action
-
             pos = self.picked_pos if self.cursor_var.get() == "Picked" else None
-
             self.active_thread = ActionExecutor(delay, stop_count, action_sequence, pos, random_ms)
             self.active_thread.start()
-
         except ValueError:
             self.update_status("Idle", "red")
 
