@@ -1,0 +1,17 @@
+# Virtual Environment
+venv/
+/venv/
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+
+# IDE / Editor specific
+.vscode/
+.idea/
+
+# Build artifacts
+build/
+dist/
+*.spec
