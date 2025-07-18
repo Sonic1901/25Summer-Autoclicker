@@ -24,13 +24,16 @@ class HotkeyListener(threading.Thread):
     def on_press(self, key):
         self.pressed_keys.add(key)
         
+        # Check for Toggle Hotkey
         if sorted(list(map(str, self.pressed_keys))) == sorted(list(map(str, self.app.toggle_hotkey_action))):
             self.app.toggle_action()
         
+        # Check for Hold Hotkey
         elif sorted(list(map(str, self.pressed_keys))) == sorted(list(map(str, self.app.hold_hotkey_action))):
             self.app.start_action()
 
     def on_release(self, key):
+        # If the released key is part of the hold hotkey, stop the action
         if key in self.app.hold_hotkey_action:
             self.app.stop_action()
 
@@ -91,7 +94,7 @@ class App(ctk.CTk):
 
         # --- Window Setup ---
         self.title("Python AutoClicker")
-        self.geometry("340x560") # Narrower width
+        self.geometry("340x560") 
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         ctk.set_appearance_mode("Dark")
@@ -235,6 +238,7 @@ class App(ctk.CTk):
         self.help_button.pack(side="right", padx=5, pady=5)
         
     def on_timing_mode_change(self):
+        if self.app_state == "Active": return # Prevent change while active
         if self.timing_mode_var.get() == "CPS":
             self.interval_frame.pack_forget()
             self.cps_frame.pack(fill="x", expand=True)
@@ -243,6 +247,7 @@ class App(ctk.CTk):
             self.interval_frame.pack(fill="x", expand=True)
 
     def toggle_theme(self):
+        if self.app_state == "Active": return # Prevent change while active
         mode = "light" if self.theme_switch.get() else "dark"
         ctk.set_appearance_mode(mode)
 
@@ -260,6 +265,7 @@ class App(ctk.CTk):
         self.after(1000, self.update_stats_display)
 
     def on_target_change(self):
+        if self.app_state == "Active": return # Prevent change while active
         is_mouse_action = self.target_var.get() in ["Left", "Middle", "Right"]
         state = "normal" if is_mouse_action else "disabled"
         def set_state_recursive(widget):
@@ -273,6 +279,7 @@ class App(ctk.CTk):
         set_state_recursive(self.cursor_frame)
 
     def set_toggle_hotkey(self):
+        if self.app_state == "Active": return # Prevent change while active
         if self.active_recorder: return
         self.toggle_hotkey_button.configure(text="Recording...")
         self.active_recorder = ActionRecorder(callback=self.on_toggle_hotkey_recorded, hotkey_mode=True)
@@ -284,6 +291,7 @@ class App(ctk.CTk):
         self.active_recorder = None
 
     def set_hold_hotkey(self):
+        if self.app_state == "Active": return # Prevent change while active
         if self.active_recorder: return
         self.hold_hotkey_button.configure(text="Recording...")
         self.active_recorder = ActionRecorder(callback=self.on_hold_hotkey_recorded, hotkey_mode=True)
@@ -295,6 +303,7 @@ class App(ctk.CTk):
         self.active_recorder = None
 
     def set_custom_key(self):
+        if self.app_state == "Active": return # Prevent change while active
         if self.active_recorder: return
         self.custom_key_button.configure(text="Recording...")
         self.active_recorder = ActionRecorder(callback=self.on_custom_key_recorded, restrict_mouse=True)
@@ -341,7 +350,7 @@ class App(ctk.CTk):
             pos = self.picked_pos if self.cursor_var.get() == "Picked" else None
             self.active_thread = ActionExecutor(delay, stop_count, action_sequence, pos, random_ms)
             self.active_thread.start()
-        except (ValueError, TclError):
+        except (ValueError, ctk.TclError):
             self.update_status("Idle", "red")
 
     def stop_action(self):
@@ -353,6 +362,7 @@ class App(ctk.CTk):
         self.update_status("Idle", "red")
     
     def pick_location(self):
+        if self.app_state == "Active": return # Prevent change while active
         self.update_status("Picking...", "blue")
         def on_click(x, y, button, pressed):
             if pressed:
