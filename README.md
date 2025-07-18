@@ -1,6 +1,6 @@
 # Python AutoClicker
 
-A versatile and customizable autoclicker and auto-key-presser built with Python and CustomTkinter. This application provides a clean, modern interface for automating mouse clicks and keyboard actions. Works only with the US QWERTY Layout.
+A versatile and customizable autoclicker and auto-key-presser built with Python and CustomTkinter. This application provides a clean, modern interface for automating mouse clicks and keyboard actions.
 
 ![AutoClicker Screenshot](AutoClickerScreenshot.png)
 
@@ -10,7 +10,7 @@ A versatile and customizable autoclicker and auto-key-presser built with Python 
 - **Advanced Key Recording:** The "Set Key" feature can record complex actions, including shifted characters (e.g., `!`, `{`) and modifier keys (e.g., `Shift`, `Ctrl`, `Alt`).
 - **Two Timing Modes:** Configure actions to occur by **Clicks Per Second** (up to 200) or at a specific **Click Interval** (hours, minutes, seconds, milliseconds).
 - **Precise Cursor Control:** Actions can be performed at the current cursor location or locked to a specific, pre-selected screen coordinate.
-- **Configurable Hotkey:** Set a custom global hotkey to start and stop the application's action.
+- **Dual Activation Modes:** Set separate, configurable hotkeys for both **Toggle** (press on/off) and **Press & Hold** functionality.
 
 ---
 ## ## How to Run
